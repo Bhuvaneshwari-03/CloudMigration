@@ -1,0 +1,88 @@
+job_config:
+  job_name: scm_ece_33251_etl_proc_sentiment_flow_dly_sentimentanalysis_prc_cmd
+  job_id: 33251
+  domain: ECE
+  process_type: sentiment_flow
+  frequency: daily
+  description: "Daily ETL process for customer sentiment analysis across channels"
+  
+source_config:
+  source_type: database
+  connection:
+    host: -scm-ece-db04.internal
+    database: ece_source_db
+    schema: sentiment_data
+  tables:
+    - table_name: customer_communications
+      columns:
+        - communication_id
+        - customer_id
+        - channel
+        - message_content
+        - timestamp
+        - communication_type
+        - agent_response
+        - resolution_time
+    - table_name: social_media_mentions
+      columns:
+        - mention_id
+        - platform
+        - content
+        - thor_handle
+        - post_timestamp
+        - reach_metrics
+        - engagement_metrics
+  
+target_config:
+  target_type: database
+  connection:
+    host: -scm-dwh-cluster.internal
+    database: ece_analytics_db
+    schema: sentiment_analytics
+  tables:
+    - table_name: daily_sentiment_analysis
+      columns:
+        - process_date
+        - customer_id
+        - channel
+        - sentiment_score
+        - sentiment_category
+        - emotion_indicators
+        - topic_categories
+        - trend_direction
+        - alert_threshold_met
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 15000
+  parallel_threads: 10
+  data_quality_checks:
+    - null_check: customer_id, message_content
+    - text_length_check: message_content [1,5000]
+    - range_check: sentiment_score [-1,1]
+  transformations:
+    - perform_sentiment_scoring
+    - extract_emotion_indicators
+    - categorize_topics
+    - detect_sentiment_trends
+    - flag_critical_sentiments
+    
+schedule_config:
+  start_time: "06:30"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - scm_ece_28934_etl_proc_feedback_flow_dly_feedbackagg_prc_cmd
+    - social_media_data_ingestion
+  
+monitoring_config:
+  sla_hours: 1.5
+  alert_recipients:
+    - ece-team@scm.com.
+    - social-media-team@scm.com.
+    - brand-management@scm.com.
+  metrics:
+    - negative_sentiment_alerts
+    - sentiment_trend_changes
+    - processing_accuracy
+    - processing_time

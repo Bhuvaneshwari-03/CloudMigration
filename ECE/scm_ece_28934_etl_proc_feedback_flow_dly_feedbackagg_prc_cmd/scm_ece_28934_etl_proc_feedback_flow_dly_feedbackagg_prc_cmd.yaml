@@ -1,0 +1,85 @@
+job_config:
+  job_name: scm_ece_28934_etl_proc_feedback_flow_dly_feedbackagg_prc_cmd
+  job_id: 28934
+  domain: ECE
+  process_type: feedback_flow
+  frequency: daily
+  description: "Daily ETL process for customer feedback aggregation and analysis"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-scm-ece-db02.internal
+    database: ece_source_db
+    schema: customer_feedback
+  tables:
+    - table_name: feedback_responses
+      columns:
+        - response_id
+        - customer_id
+        - survey_id
+        - question_id
+        - response_value
+        - response_text
+        - submission_date
+        - channel_source
+    - table_name: survey_metadata
+      columns:
+        - survey_id
+        - survey_name
+        - survey_type
+        - active_period_start
+        - active_period_end
+        - target_scmdience
+        - response_target
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-scm-dwh-cluster.internal
+    database: ece_analytics_db
+    schema: feedback_analytics
+  tables:
+    - table_name: daily_feedback_summary
+      columns:
+        - process_date
+        - survey_type
+        - customer_segment
+        - response_count
+        - avg_satisfaction_score
+        - nps_score
+        - sentiment_breakdown
+        - key_themes
+        - improvement_areas
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 20000
+  parallel_threads: 6
+  data_quality_checks:
+    - null_check: customer_id, survey_id
+    - range_check: response_value [1,10]
+    - text_length_check: response_text [0,2000]
+  transformations:
+    - calculate_nps_scores
+    - perform_sentiment_analysis
+    - extract_key_themes
+    - aggregate_by_segments
+    
+schedule_config:
+  start_time: "05:30"
+  timezone: "scmstralia/Sydney"
+  dependencies:
+    - scm_ece_15623_etl_proc_interaction_flow_dly_custinteraction_prc_cmd
+  
+monitoring_config:
+  sla_hours: 2
+  alert_recipients:
+    - ece-team@scm.com.scm
+    - customer-insights@scm.com.scm
+  metrics:
+    - feedback_volume
+    - nps_trends
+    - sentiment_distribution
+    - processing_time

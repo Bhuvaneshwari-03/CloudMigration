@@ -1,0 +1,85 @@
+job_config:
+  job_name: scm_ece_19847_etl_proc_journey_flow_dly_journeymap_prc_cmd
+  job_id: 19847
+  domain: ECE
+  process_type: journey_flow
+  frequency: daily
+  description: "Daily ETL process for customer journey mapping and analysis"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-scm-ece-db03.internal
+    database: ece_source_db
+    schema: customer_journey
+  tables:
+    - table_name: touchpoint_events
+      columns:
+        - event_id
+        - customer_id
+        - touchpoint_id
+        - touchpoint_type
+        - timestamp
+        - session_id
+        - sequence_number
+        - outcome
+        - effort_score
+    - table_name: journey_definitions
+      columns:
+        - journey_id
+        - journey_name
+        - journey_type
+        - typical_touchpoints
+        - expected_duration
+        - success_criteria
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-scm-dwh-cluster.internal
+    database: ece_analytics_db
+    schema: journey_analytics
+  tables:
+    - table_name: daily_journey_analysis
+      columns:
+        - process_date
+        - customer_id
+        - journey_type
+        - journey_stage
+        - completion_status
+        - journey_duration
+        - friction_points
+        - success_probability
+        - next_best_action
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 25000
+  parallel_threads: 8
+  data_quality_checks:
+    - null_check: customer_id, touchpoint_id
+    - sequence_check: sequence_number
+    - range_check: effort_score [1,7]
+  transformations:
+    - map_customer_journeys
+    - identify_friction_points
+    - calculate_completion_rates
+    - predict_next_actions
+    
+schedule_config:
+  start_time: "06:00"
+  timezone: "scmstralia/Sydney"
+  dependencies:
+    - touchpoint_data_ingestion
+  
+monitoring_config:
+  sla_hours: 2.5
+  alert_recipients:
+    - ece-team@scm.com.scm
+    - digital-experience@scm.com.scm
+  metrics:
+    - journey_completion_rates
+    - friction_point_count
+    - customer_drop_off_rates
+    - processing_time

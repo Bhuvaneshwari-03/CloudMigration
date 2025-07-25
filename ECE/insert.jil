@@ -1,0 +1,121 @@
+/* =====================================================
+   ECE (Enhanced Customer Experience) Pipeline Jobs
+   Pipeline: Customer Experience Analytics and Insights System
+   Owner: Customer Experience Team
+   ===================================================== */
+
+/* Customer Interaction Analytics Daily Job */
+insert_job: scm_ece_15623_etl_proc_interaction_flow_dly_custinteraction_prc_cmd
+job_type: CMD
+owner: ece_analytics@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "03:00"
+description: "Daily customer interaction analytics processing for experience insights"
+command: 
+  --interaction-data s3://ece-interactions/daily/$YYYYMMDD/ \
+  --channel-data s3://ece-channels/omnichannel/$YYYYMMDD/ \
+  --customer-profiles s3://ece-customers/profiles/current/ \
+  --output-analytics s3://ece-analytics/interactions/$YYYYMMDD/ \
+  --output-metrics s3://ece-metrics/daily-kpis/$YYYYMMDD/ \
+  --session-timeout 1800
+machine: ece-analytics-cluster-01
+condition: s(scm_ece_data_ingestion_channels_job) & s(scm_ece_customer_profile_sync_job)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: ece-analytics@scm.com,customer-insights@scm.com
+std_out_file: /var/log/ece/customer_interaction_$AUTO_JOB_NAME.out
+std_err_file: /var/log/ece/customer_interaction_$AUTO_JOB_NAME.err
+pipeline_name: ECE_Customer_Interaction_Pipeline
+business_unit: Enhanced_Customer_Experience
+priority: 2
+
+/*=================================================================== */
+
+/* Customer Feedback Aggregation Job */
+insert_job: scm_ece_28934_etl_proc_feedback_flow_dly_feedbackagg_prc_cmd
+job_type: CMD
+owner: ece_feedback@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "04:30"
+description: "Daily customer feedback aggregation and sentiment analysis"
+command: 
+  --survey-data s3://ece-feedback/surveys/$YYYYMMDD/ \
+  --social-data s3://ece-feedback/social-media/$YYYYMMDD/ \
+  --contact-center s3://ece-feedback/contact-center/$YYYYMMDD/ \
+  --interaction-context s3://ece-analytics/interactions/$YYYYMMDD/ \
+  --output-aggregated s3://ece-feedback/aggregated/$YYYYMMDD/ \
+machine: ece-feedback-cluster-01
+condition: s(scm_ece_15623_etl_proc_interaction_flow_dly_custinteraction_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: ece-feedback@scm.com,voice-of-customer@scm.com
+std_out_file: /var/log/ece/feedback_aggregation_$AUTO_JOB_NAME.out
+std_err_file: /var/log/ece/feedback_aggregation_$AUTO_JOB_NAME.err
+pipeline_name: ECE_Feedback_Aggregation_Pipeline
+business_unit: Enhanced_Customer_Experience
+priority: 2
+
+/*=================================================================== */
+
+/* Customer Journey Mapping Job */
+insert_job: scm_ece_19847_etl_proc_journey_flow_dly_journeymap_prc_cmd
+job_type: CMD
+owner: ece_journey@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "05:15"
+description: "Daily customer journey mapping and touchpoint analysis"
+command: 
+  --interaction-analytics s3://ece-analytics/interactions/$YYYYMMDD/ \
+  --feedback-data s3://ece-feedback/aggregated/$YYYYMMDD/ \
+  --product-usage s3://ece-products/usage-data/$YYYYMMDD/ \
+  --journey-templates s3://ece-config/journey-definitions/current/ \
+  --output-journeys s3://ece-journeys/mapped/$YYYYMMDD/ \
+  --output-segments s3://ece-segments/journey-based/$YYYYMMDD/ \
+  --sequence-analysis-window 30
+machine: ece-journey-cluster-01
+condition: s(scm_ece_28934_etl_proc_feedback_flow_dly_feedbackagg_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: ece-journey@scm.com,customer-strategy@scm.com
+std_out_file: /var/log/ece/journey_mapping_$AUTO_JOB_NAME.out
+std_err_file: /var/log/ece/journey_mapping_$AUTO_JOB_NAME.err
+pipeline_name: ECE_Journey_Mapping_Pipeline
+business_unit: Enhanced_Customer_Experience
+priority: 2
+
+/*=================================================================== */
+
+/* Sentiment Analysis Processing Job */
+insert_job: scm_ece_33251_etl_proc_sentiment_flow_dly_sentimentanalysis_prc_cmd
+job_type: CMD
+owner: ece_analytics@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "06:00"
+description: "Daily sentiment analysis and customer satisfaction scoring"
+command: 
+  --journey-data s3://ece-journeys/mapped/$YYYYMMDD/ \
+  --feedback-text s3://ece-feedback/raw-text/$YYYYMMDD/ \
+  --ml-models s3://ece-ml-models/sentiment/production/v3.0/ \
+  --lexicon-data s3://ece-reference/sentiment-lexicons/current/ \
+  --output-scores s3://ece-sentiment/scores/$YYYYMMDD/ \
+  --output-trends s3://ece-sentiment/trends/$YYYYMMDD/ \
+  --output-alerts s3://ece-alerts/sentiment-drops/$YYYYMMDD/ \
+  --alert-threshold -0.3
+machine: ece-ml-cluster-01
+condition: s(scm_ece_19847_etl_proc_journey_flow_dly_journeymap_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: ece-analytics@scm.com,customer-satisfaction@scm.com,executive-dashboard@scm.com
+std_out_file: /var/log/ece/sentiment_analysis_$AUTO_JOB_NAME.out
+std_err_file: /var/log/ece/sentiment_analysis_$AUTO_JOB_NAME.err
+pipeline_name: ECE_Sentiment_Analysis_Pipeline
+business_unit: Enhanced_Customer_Experience
+priority: 1
