@@ -1,0 +1,81 @@
+job_config:
+  job_name: scm_rsb_79135_etl_proc_behavioral_flow_dly_behaviorprofile_prc_cmd
+  job_id: 79135
+  domain: RSB
+  process_type: behavioral_flow
+  frequency: daily
+  description: "Daily ETL process for behavioral profile analysis"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-rsb-db04.internal
+    database: rsb_source_db
+    schema: behavioral_data
+  tables:
+    - table_name: user_activities
+      columns:
+        - activity_id
+        - user_id
+        - activity_type
+        - timestamp
+        - device_info
+        - location
+        - transaction_amount
+        - application_used
+    - table_name: behavioral_baseline
+      columns:
+        - user_id
+        - baseline_date
+        - typical_hours
+        - typical_locations
+        - typical_transaction_range
+        - typical_devices
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: rsb_analytics_db
+    schema: behavioral_analytics
+  tables:
+    - table_name: daily_behavior_profiles
+      columns:
+        - process_date
+        - user_id
+        - deviation_score
+        - anomaly_indicators
+        - risk_category
+        - behavior_change_flag
+        - profile_confidence
+        - recommended_action
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 8000
+  parallel_threads: 6
+  data_quality_checks:
+    - null_check: user_id, activity_type
+    - range_check: deviation_score [0,100]
+  transformations:
+    - calculate_behavioral_baselines
+    - detect_deviations
+    - score_behavioral_risk
+    - generate_recommendations
+    
+schedule_config:
+  start_time: "03:30"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - scm_rsb_45612_etl_proc_access_flow_dly_accesspattern_prc_cmd
+  
+monitoring_config:
+  sla_hours: 2
+  alert_recipients:
+    - rsb-team@scm.com.
+    - fraud-prevention@scm.com.
+  metrics:
+    - high_risk_profiles_identified
+    - baseline_accuracy
+    - processing_time

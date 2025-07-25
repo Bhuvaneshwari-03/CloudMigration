@@ -1,0 +1,201 @@
+# XTF Real-Time Fraud Detection Pipeline Configuration
+# Job: scm_xtf_67234_etl_proc_transaction_flow_rt_frauddetection_prc_cmd
+# Pipeline: Real-Time Fraud Detection System
+
+pipeline:
+  name: "XTF_Real_Time_Fraud_Detection"
+  version: "1.2.3"
+  description: "Real-time fraud detection processing for transaction flows"
+  owner: "xtf_analytics@scm.com"
+  business_unit: "Risk_Technology_Framework"
+
+source_tables:
+  - name: "transaction_stream_raw"
+    type: "kafka_stream"
+    database: "xtf_streaming_db"
+    table: "transaction_events"
+    location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
+    topic: "scm-transaction-stream"
+    format: "avro"
+    schema_registry: "http://schema-registry:8081"
+    checkpoint_location: "s3://xtf-checkpoints/fraud-detection/"
+    watermark:
+      column: "transaction_timestamp"
+      delay: "30 seconds"
+    columns:
+      - name: "transaction_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "account_id"
+        type: "string"
+        nullable: false
+      - name: "transaction_amount"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "transaction_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "merchant_id"
+        type: "string"
+        nullable: true
+      - name: "merchant_category"
+        type: "string"
+        nullable: true
+      - name: "transaction_type"
+        type: "string"
+        nullable: false
+      - name: "channel"
+        type: "string"
+        nullable: false
+      - name: "location_country"
+        type: "string"
+        nullable: true
+      - name: "location_city"
+        type: "string"
+        nullable: true
+
+  - name: "customer_profiles"
+    type: "delta_table"
+    database: "xtf_reference_db"
+    table: "customer_risk_profiles"
+    location: "s3://xtf-reference-data/customer-profiles/"
+    format: "delta"
+    columns:
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "risk_score"
+        type: "double"
+        nullable: false
+      - name: "customer_segment"
+        type: "string"
+        nullable: false
+      - name: "account_age_days"
+        type: "integer"
+        nullable: false
+      - name: "avg_monthly_volume"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "last_updated"
+        type: "timestamp"
+        nullable: false
+
+  - name: "fraud_rules"
+    type: "delta_table"
+    database: "xtf_config_db"
+    table: "fraud_detection_rules"
+    location: "s3://xtf-config/fraud-rules/"
+    format: "delta"
+    columns:
+      - name: "rule_id"
+        type: "string"
+        nullable: false
+      - name: "rule_name"
+        type: "string"
+        nullable: false
+      - name: "rule_logic"
+        type: "string"
+        nullable: false
+      - name: "threshold_value"
+        type: "double"
+        nullable: false
+      - name: "severity_level"
+        type: "string"
+        nullable: false
+      - name: "is_active"
+        type: "boolean"
+        nullable: false
+
+target_tables:
+  - name: "fraud_alerts_realtime"
+    type: "delta_table"
+    database: "xtf_alerts_db"
+    table: "real_time_fraud_alerts"
+    location: "s3://xtf-fraud-alerts/processed/"
+    format: "delta"
+    write_mode: "append"
+    partition_by: 
+      - "alert_date"
+      - "severity_level"
+    optimize_write: true
+    auto_compact: true
+    columns:
+      - name: "alert_id"
+        type: "string"
+        nullable: false
+      - name: "transaction_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "alert_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "alert_date"
+        type: "date"
+        nullable: false
+      - name: "fraud_score"
+        type: "double"
+        nullable: false
+      - name: "severity_level"
+        type: "string"
+        nullable: false
+      - name: "triggered_rules"
+        type: "array<string>"
+        nullable: false
+      - name: "transaction_amount"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "merchant_id"
+        type: "string"
+        nullable: true
+      - name: "alert_status"
+        type: "string"
+        nullable: false
+
+  - name: "fraud_metrics_stream"
+    type: "kafka_sink"
+    database: "xtf_streaming_db"
+    table: "fraud_detection_metrics"
+    location: "kafka://kafka-cluster-01:9092"
+    topic: "xtf-fraud-metrics"
+    format: "json"
+    columns:
+      - name: "metric_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "transactions_processed"
+        type: "long"
+        nullable: false
+      - name: "fraud_alerts_generated"
+        type: "long"
+        nullable: false
+      - name: "avg_fraud_score"
+        type: "double"
+        nullable: false
+      - name: "processing_latency_ms"
+        type: "long"
+        nullable: false
+
+processing:
+  stream_processing:
+    trigger: "2 minutes"
+    batch_size: 1000
+    parallelism: 20
+    checkpoint_interval: "2 minutes"
+    
+  fraud_detection:
+    model_path: "s3://xtf-ml-models/fraud-detection/v2.1/"
+    threshold_config: "/config/xtf/fraud-thresholds.conf"
+    rule_engine: "drools"
+    
+  monitoring:
+    metrics_enabled: true
+    alert_thresholds:
+      processing_delay_seconds: 300
+      fraud_rate_threshold: 0.05
+      error_rate_threshold: 0.01

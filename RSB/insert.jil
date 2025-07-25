@@ -1,0 +1,108 @@
+/* =====================================================
+   RSB (Risk-Based Security) Pipeline Jobs
+   Pipeline: Risk-Based Security Analytics System
+   Owner: RSB Security Team
+   Environment: Production
+   ===================================================== */
+
+/* thentication Analytics Daily Job */
+insert_job: scm_rsb_38729_etl_proc_thentication_flow_dly_thanalytics_prc_cmd
+job_type: CMD
+owner: rsb_security@scm.com.
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "02:00"
+description: "Daily thentication analytics processing for security insights"
+command: 
+  --input-path s3://rsb-th-logs/daily/$YYYYMMDD/ \
+  --output-path s3://rsb-analytics/th-insights/$YYYYMMDD/ \
+  --partition-date $YYYYMMDD \
+machine: rsb-spark-cluster-01
+condition: s(scm_rsb_data_collection_th_logs_job)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: rsb-alerts@scm.com.,security-ops@scm.com.
+std_out_file: /var/log/rsb/th_analytics_$TO_JOB_NAME.out
+std_err_file: /var/log/rsb/th_analytics_$TO_JOB_NAME.err
+pipeline_name: RSB_thentication_Analytics_Pipeline
+business_unit: Risk_Based_Security
+priority: 2
+
+/*============================================================================ */
+
+/* Access Pattern Analysis Job */
+insert_job: scm_rsb_45612_etl_proc_access_flow_dly_accesspattern_prc_cmd
+job_type: CMD
+owner: rsb_analytics@scm.com.
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "03:30"
+description: "Daily access pattern analysis for behavioral anomaly detection"
+command:
+  --output-patterns s3://rsb-analytics/access-patterns/$YYYYMMDD/ \
+machine: rsb-spark-cluster-02
+condition: s(scm_rsb_38729_etl_proc_thentication_flow_dly_thanalytics_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: rsb-analytics@scm.com.
+std_out_file: /var/log/rsb/access_pattern_$TO_JOB_NAME.out
+std_err_file: /var/log/rsb/access_pattern_$TO_JOB_NAME.err
+pipeline_name: RSB_Access_Pattern_Pipeline
+business_unit: Risk_Based_Security
+priority: 2
+
+/*============================================================================ */
+
+/* Threat Intelligence Processing Job */
+insert_job: scm_rsb_62384_etl_proc_threat_flow_dly_threatintel_prc_cmd
+job_type: CMD
+owner: rsb_threat_intel@scm.com.
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "01:00"
+description: "Daily threat intelligence processing and correlation analysis"
+command: 
+  --threat-feeds s3://rsb-external-feeds/threat-intelligence/$YYYYMMDD/ \
+  --internal-indicators s3://rsb-internal/iocs/$YYYYMMDD/ \
+  --correlation-data s3://rsb-analytics/access-patterns/ \
+  --output-intel s3://rsb-threat-intel/processed/$YYYYMMDD/ \
+machine: rsb-threat-cluster-01
+condition: success(scm_external_threat_feed_ingestion_job)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: rsb-threat-intel@scm.com.,soc-team@scm.com.
+std_out_file: /var/log/rsb/threat_intel_$TO_JOB_NAME.out
+std_err_file: /var/log/rsb/threat_intel_$TO_JOB_NAME.err
+pipeline_name: RSB_Threat_Intelligence_Pipeline
+business_unit: Risk_Based_Security
+priority: 1
+
+/*============================================================================ */
+
+/* Behavioral Profiling Job */
+insert_job: scm_rsb_79135_etl_proc_behavioral_flow_dly_behaviorprofile_prc_cmd
+job_type: CMD
+owner: rsb_analytics@scm.com.
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "04:45"
+description: "Daily behavioral profiling for user risk assessment"
+command:
+  --historical-behavior s3://rsb-user-profiles/behavioral-history/ \
+  --ml-models s3://rsb-ml-models/behavioral-analysis/v3.2/ \
+  --output-profiles s3://rsb-user-profiles/updated/$YYYYMMDD/ \
+  --risk-scores s3://rsb-risk-assessments/$YYYYMMDD/
+machine: rsb-ml-cluster-01
+condition: s(scm_rsb_45612_etl_proc_access_flow_dly_accesspattern_prc_cmd) & s(scm_rsb_62384_etl_proc_threat_flow_dly_threatintel_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: rsb-analytics@scm.com.,risk-management@scm.com.
+std_out_file: /var/log/rsb/behavioral_profiling_$TO_JOB_NAME.out
+std_err_file: /var/log/rsb/behavioral_profiling_$TO_JOB_NAME.err
+pipeline_name: RSB_Behavioral_Profiling_Pipeline
+business_unit: Risk_Based_Security
+priority: 2

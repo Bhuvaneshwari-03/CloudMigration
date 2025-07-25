@@ -1,0 +1,85 @@
+job_config:
+  job_name: scm_fc_78429_etl_proc_kyc_flow_dly_kycverification_prc_cmd
+  job_id: 78429
+  domain: FC
+  process_type: kyc_flow
+  frequency: daily
+  description: "Daily ETL process for KYC verification and customer due diligence"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm_fc-db03.internal
+    database: fc_source_db
+    schema: kyc_data
+  tables:
+    - table_name: customer_documents
+      columns:
+        - document_id
+        - customer_id
+        - document_type
+        - verification_status
+        - expiry_date
+        - verification_date
+        - verification_method
+        - risk_flags
+    - table_name: identity_verification
+      columns:
+        - verification_id
+        - customer_id
+        - identity_score
+        - address_verified
+        - income_verified
+        - source_of_funds_verified
+        - pep_check_status
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: fc_analytics_db
+    schema: kyc_monitoring
+  tables:
+    - table_name: daily_kyc_status
+      columns:
+        - process_date
+        - customer_id
+        - kyc_status
+        - completeness_score
+        - verification_level
+        - documents_pending
+        - refresh_required
+        - risk_assessment_score
+        - next_review_date
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 20000
+  parallel_threads: 6
+  data_quality_checks:
+    - null_check: customer_id, document_type
+    - date_range_check: expiry_date, verification_date
+    - enum_check: verification_status [VERIFIED, PENDING, REJECTED]
+  transformations:
+    - assess_kyc_completeness
+    - calculate_verification_scores
+    - identify_refresh_requirements
+    - flag_high_risk_profiles
+    
+schedule_config:
+  start_time: "01:30"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - scm_fc_64173_etl_proc_sanctions_flow_dly_sanctionscheck_prc_cmd
+  
+monitoring_config:
+  sla_hours: 2.5
+  alert_recipients:
+    - kyc-team@scm.com.
+    - compliance@scm.com.
+  metrics:
+    - incomplete_kyc_profiles
+    - expiring_documents
+    - high_risk_customers
+    - processing_time

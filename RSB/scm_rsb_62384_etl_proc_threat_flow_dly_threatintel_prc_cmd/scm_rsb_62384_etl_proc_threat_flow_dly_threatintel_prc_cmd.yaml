@@ -1,0 +1,82 @@
+job_config:
+  job_name: scm_rsb_62384_etl_proc_threat_flow_dly_threatintel_prc_cmd
+  job_id: 62384
+  domain: RSB
+  process_type: threat_flow
+  frequency: daily
+  description: "Daily ETL process for threat intelligence analysis"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-rsb-db03.internal
+    database: rsb_source_db
+    schema: threat_intel
+  tables:
+    - table_name: security_incidents
+      columns:
+        - incident_id
+        - incident_type
+        - severity_level
+        - timestamp
+        - affected_systems
+        - threat_vector
+        - mitigation_status
+        - impact_score
+    - table_name: threat_indicators
+      columns:
+        - indicator_id
+        - indicator_type
+        - indicator_value
+        - confidence_score
+        - source
+        - first_seen
+        - last_seen
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: rsb_analytics_db
+    schema: threat_analytics
+  tables:
+    - table_name: daily_threat_intelligence
+      columns:
+        - process_date
+        - threat_category
+        - incident_count
+        - avg_severity
+        - high_confidence_indicators
+        - new_threat_vectors
+        - mitigation_effectiveness
+        - trend_score
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 5000
+  parallel_threads: 8
+  data_quality_checks:
+    - null_check: incident_id, indicator_id
+    - range_check: confidence_score [0,100]
+    - enum_check: severity_level [LOW, MEDIUM, HIGH, CRITICAL]
+  transformations:
+    - categorize_threats
+    - calculate_trend_scores
+    - enrich_with_external_intel
+    
+schedule_config:
+  start_time: "03:00"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - external_threat_feeds_ingestion
+  
+monitoring_config:
+  sla_hours: 1.5
+  alert_recipients:
+    - rsb-team@scm.com.
+    - security-ops@scm.com.
+  metrics:
+    - critical_threats_detected
+    - processing_time
+    - data_freshness

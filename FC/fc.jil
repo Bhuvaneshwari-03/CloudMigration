@@ -1,0 +1,119 @@
+/* =====================================================
+   fc (Financial Crime) Pipeline Jobs
+   Pipeline: Financial Crime Detection and Compliance System
+   Owner: Financial Crime Compliance Team
+   Environment: Production
+   ============================================================= */
+
+/* AML Monitoring Daily Processing Job */
+insert_job: scm_fc_52896_etl_proc_aml_flow_dly_amlmonitoring_prc_cmd
+job_type: CMD
+owner: fc_compliance@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "01:30"
+description: "Daily AML monitoring and suspicious activity detection"
+command: 
+  --transaction-data s3://fc-transactions/daily/$YYYYMMDD/ \
+  --customer-profiles s3://fc-customers/profiles/current/ \
+  --aml-rules s3://fc-config/aml-rules/v4.2/ \
+  --output-alerts s3://fc-alerts/aml/$YYYYMMDD/ \
+  --output-reports s3://fc-reports/aml-daily/$YYYYMMDD/ \
+machine: fc-spark-cluster-01
+condition: s(scm_fc_transaction_enrichment_job) & s(scm_fc_customer_data_sync_job)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: fc-alerts@scm.com. ,aml-team@scm.com. ,compliance-ops@scm.com. 
+std_out_file: /var/log/fc/aml_monitoring_$ TO_JOB_NAME.out
+std_err_file: /var/log/fc/aml_monitoring_$ TO_JOB_NAME.err
+pipeline_name: fc_AML_Monitoring_Pipeline
+business_unit: fc_Compliance
+priority: 1
+
+/*==================================================================== */
+
+/* Sanctions Screening Daily Job */
+insert_job: scm_fc_64173_etl_proc_sanctions_flow_dly_sanctionscheck_prc_cmd
+job_type: CMD
+owner: fc_sanctions@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "00:30"
+description: "Daily sanctions list screening and compliance checking"
+command: 
+  --customer-data s3://fc-customers/daily/$YYYYMMDD/ \
+  --sanctions-lists s3://fc-reference/sanctions-lists/current/ \
+  --transaction-parties s3://fc-transactions/parties/$YYYYMMDD/ \
+  --output-matches s3://fc-sanctions/matches/$YYYYMMDD/ \
+  --output-cleared s3://fc-sanctions/cleared/$YYYYMMDD/ \
+machine: fc-compliance-cluster-01
+condition: s(scm_fc_sanctions_list_update_job)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: fc-sanctions@scm.com. ,compliance-ops@scm.com. 
+std_out_file: /var/log/fc/sanctions_screening_$ TO_JOB_NAME.out
+std_err_file: /var/log/fc/sanctions_screening_$ TO_JOB_NAME.err
+pipeline_name: fc_Sanctions_Screening_Pipeline
+business_unit: fc_Compliance
+priority: 1
+
+/*==================================================================== */
+
+/* KYC Verification Processing Job */
+insert_job: scm_fc_78429_etl_proc_kyc_flow_dly_kycverification_prc_cmd
+job_type: CMD
+owner: fc_kyc@scm.com. 
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "02:15"
+description: "Daily KYC verification and customer due diligence processing"
+command: 
+  --customer-updates s3://fc-customers/kyc-updates/$YYYYMMDD/ \
+  --verification-rules s3://fc-config/kyc-rules/current/ \
+  --external-data s3://fc-external/identity-verification/$YYYYMMDD/ \
+  --output-verified s3://fc-kyc/verified/$YYYYMMDD/ \
+  --output-flagged s3://fc-kyc/flagged/$YYYYMMDD/ \
+  --risk-assessment s3://fc-risk/kyc-scores/$YYYYMMDD/
+machine: fc-kyc-cluster-01
+condition: s(scm_fc_64173_etl_proc_sanctions_flow_dly_sanctionscheck_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: fc-kyc@scm.com. ,customer-onboarding@scm.com. 
+std_out_file: /var/log/fc/kyc_verification_$ TO_JOB_NAME.out
+std_err_file: /var/log/fc/kyc_verification_$ TO_JOB_NAME.err
+pipeline_name: fc_KYC_Verification_Pipeline
+business_unit: FC_Compliance
+priority: 2
+
+/*==================================================================== */
+
+/* Suspicious Activity Report Generation Job */
+insert_job: scm_fc_35681_etl_proc_suspicious_flow_dly_sargeneration_prc_cmd
+job_type: CMD
+owner: fc_reporting@scm.com. 
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "04:00"
+description: "Daily suspicious activity report generation and regulatory reporting"
+command: 
+  --aml-alerts s3://fc-alerts/aml/$YYYYMMDD/ \
+  --kyc-flagged s3://fc-kyc/flagged/$YYYYMMDD/ \
+  --investigation-data s3://fc-investigations/completed/$YYYYMMDD/ \
+  --regulatory-templates s3://fc-config/sar-templates/current/ \
+  --output-reports s3://fc-regulatory/sar-reports/$YYYYMMDD/ \
+  --output-filings s3://fc-regulatory/ strac-filings/$YYYYMMDD/ \
+  --case-management-export s3://fc-case-mgmt/exports/$YYYYMMDD/
+machine: fc-reporting-cluster-01
+condition: s(scm_fc_52896_etl_proc_aml_flow_dly_amlmonitoring_prc_cmd) & s(scm_fc_78429_etl_proc_kyc_flow_dly_kycverification_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: fc-reporting@scm.com. ,regulatory-affairs@scm.com. ,aml-team@scm.com. 
+std_out_file: /var/log/fc/sar_generation_$ TO_JOB_NAME.out
+std_err_file: /var/log/fc/sar_generation_$ TO_JOB_NAME.err
+pipeline_name: fc_SAR_Generation_Pipeline
+business_unit: fc_Compliance
+priority: 1

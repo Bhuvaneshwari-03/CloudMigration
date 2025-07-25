@@ -1,0 +1,235 @@
+# XTF Real-Time Pattern Analysis Pipeline Configuration
+# Job: scm_xtf_54782_etl_proc_pattern_flow_rt_patternanalysis_prc_cmd
+# Pipeline: Real-Time ML Pattern Analysis System
+
+pipeline:
+  name: "XTF_ML_Pattern_Analysis"
+  version: "2.0.1"
+  description: "Machine learning pattern analysis for fraud detection"
+  owner: "xtf_ml_team@scm.com"
+  business_unit: "Risk_Technology_Framework"
+
+source_tables:
+  - name: "velocity_analysis_stream"
+    type: "kafka_stream"
+    database: "xtf_streaming_db"
+    table: "velocity_analysis_results"
+    location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
+    topic: "xtf-velocity-analysis"
+    format: "avro"
+    schema_registry: "http://schema-registry:8081"
+    checkpoint_location: "s3://xtf-checkpoints/pattern-analysis/"
+    watermark:
+      column: "analysis_timestamp"
+      delay: "60 seconds"
+    columns:
+      - name: "analysis_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "analysis_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "velocity_score"
+        type: "double"
+        nullable: false
+      - name: "transaction_count"
+        type: "integer"
+        nullable: false
+      - name: "total_amount"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "unique_merchants"
+        type: "integer"
+        nullable: false
+      - name: "risk_level"
+        type: "string"
+        nullable: false
+
+  - name: "transaction_enriched"
+    type: "delta_table"
+    database: "xtf_enriched_db"
+    table: "enriched_transactions"
+    location: "s3://xtf-transaction-enriched/stream/"
+    format: "delta"
+    columns:
+      - name: "transaction_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "transaction_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "amount"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "merchant_category"
+        type: "string"
+        nullable: false
+      - name: "location_risk_score"
+        type: "double"
+        nullable: false
+      - name: "time_of_day_risk"
+        type: "double"
+        nullable: false
+      - name: "merchant_risk_score"
+        type: "double"
+        nullable: false
+      - name: "customer_behavior_score"
+        type: "double"
+        nullable: false
+
+  - name: "feature_store"
+    type: "delta_table"
+    database: "xtf_ml_db"
+    table: "feature_store_current"
+    location: "s3://xtf-feature-store/current/"
+    format: "delta"
+    columns:
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "feature_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "avg_transaction_amount_7d"
+        type: "double"
+        nullable: false
+      - name: "transaction_frequency_7d"
+        type: "double"
+        nullable: false
+      - name: "unique_merchants_7d"
+        type: "integer"
+        nullable: false
+      - name: "weekend_activity_ratio"
+        type: "double"
+        nullable: false
+      - name: "high_risk_merchant_ratio"
+        type: "double"
+        nullable: false
+      - name: "cross_border_transaction_ratio"
+        type: "double"
+        nullable: false
+      - name: "customer_tenure_days"
+        type: "integer"
+        nullable: false
+
+target_tables:
+  - name: "pattern_predictions"
+    type: "delta_table"
+    database: "xtf_ml_db"
+    table: "pattern_analysis_predictions"
+    location: "s3://xtf-pattern-analysis/predictions/"
+    format: "delta"
+    write_mode: "append"
+    partition_by: 
+      - "prediction_date"
+      - "model_version"
+    optimize_write: true
+    auto_compact: true
+    columns:
+      - name: "prediction_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "transaction_id"
+        type: "string"
+        nullable: true
+      - name: "prediction_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "prediction_date"
+        type: "date"
+        nullable: false
+      - name: "model_version"
+        type: "string"
+        nullable: false
+      - name: "fraud_probability"
+        type: "double"
+        nullable: false
+      - name: "pattern_type"
+        type: "string"
+        nullable: false
+      - name: "confidence_score"
+        type: "double"
+        nullable: false
+      - name: "feature_importance"
+        type: "map<string,double>"
+        nullable: false
+      - name: "anomaly_score"
+        type: "double"
+        nullable: false
+      - name: "risk_factors"
+        type: "array<string>"
+        nullable: false
+
+  - name: "ml_insights_stream"
+    type: "kafka_sink"
+    database: "xtf_streaming_db"
+    table: "ml_insights_realtime"
+    location: "kafka://kafka-cluster-01:9092"
+    topic: "xtf-ml-insights"
+    format: "json"
+    columns:
+      - name: "insight_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "insight_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "pattern_detected"
+        type: "string"
+        nullable: false
+      - name: "fraud_probability"
+        type: "double"
+        nullable: false
+      - name: "recommended_action"
+        type: "string"
+        nullable: false
+
+processing:
+  stream_processing:
+    trigger: "4 minutes"
+    batch_size: 800
+    parallelism: 25
+    checkpoint_interval: "4 minutes"
+    
+  machine_learning:
+    model_registry: "s3://xtf-ml-models/fraud-patterns/v2.1/"
+    models:
+      - name: "isolation_forest"
+        version: "2.1.3"
+        path: "isolation_forest/model.pkl"
+        threshold: 0.7
+      - name: "random_forest_classifier"
+        version: "2.0.8"
+        path: "random_forest/model.pkl" 
+        threshold: 0.75
+      - name: "xgboost_classifier"
+        version: "1.9.2"
+        path: "xgboost/model.pkl"
+        threshold: 0.8
+    ensemble_weights: [0.3, 0.4, 0.3]
+    feature_scaling: "standard_scaler"
+    
+  pattern_detection:
+    algorithms: ["clustering", "time_series_analysis", "graph_analysis"]
+    time_windows: [10, 30, 60, 240] # minutes
+    anomaly_threshold: 0.85
+    
+  monitoring:
+    metrics_enabled: true
+    model_drift_detection: true
+    alert_thresholds:
+      processing_delay_seconds: 240
+      prediction_accuracy_threshold: 0.85
+      model_drift_threshold: 0.1

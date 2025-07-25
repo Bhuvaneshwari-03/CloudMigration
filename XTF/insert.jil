@@ -1,0 +1,97 @@
+/* =====================================================
+   XTF (Real-Time Fraud) Pipeline Jobs
+   Pipeline: Real-Time Fraud Detection System
+   Owner: XTF Analytics Team
+   Environment: Production
+   ===================================================== */
+
+/* Transaction Flow - Real-Time Fraud Detection Job */
+insert_job: scm_xtf_67234_etl_proc_transaction_flow_rt_frauddetection_prc_cmd
+job_type: CMD
+owner: xtf_analytics@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "00:00,02:00,04:00,06:00,08:00,10:00,12:00,14:00,16:00,18:00,20:00,22:00"
+description: "Real-time fraud detection processing for transaction flows"
+command: 
+  --input-path s3://xtf-transaction-stream/real-time/ \
+  --output-path s3://xtf-fraud-alerts/processed/ \
+  --checkpoint-location s3://xtf-checkpoints/fraud-detection/ \
+machine: xtf-spark-cluster-01
+condition: s(scm_xtf_data_ingestion_streaming_job)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: xtf-alerts@scm.com,data-ops@scm.com
+std_out_file: /var/log/xtf/fraud_detection_$AUTO_JOB_NAME.out
+std_err_file: /var/log/xtf/fraud_detection_$AUTO_JOB_NAME.err
+pipeline_name: XTF_Real_Time_Fraud_Pipeline
+business_unit: Risk_Technology_Framework
+priority: 1
+
+/*=============================================================================*/
+
+/* Velocity Check Processing Job */
+insert_job: scm_xtf_89345_etl_proc_velocity_flow_rt_velocitycheck_prc_cmd
+job_type: CMD
+owner: xtf_analytics@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "00:15,02:15,04:15,06:15,08:15,10:15,12:15,14:15,16:15,18:15,20:15,22:15"
+description: "Real-time velocity checking for transaction patterns"
+command: /opt/spark/bin/spark-submit \
+  --output-path s3://xtf-velocity-analysis/results/ \
+machine: xtf-spark-cluster-02
+condition: s(scm_xtf_67234_etl_proc_transaction_flow_rt_frauddetection_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: xtf-alerts@scm.com
+std_out_file: /var/log/xtf/velocity_check_$AUTO_JOB_NAME.out
+std_err_file: /var/log/xtf/velocity_check_$AUTO_JOB_NAME.err
+pipeline_name: XTF_Velocity_Analysis_Pipeline
+business_unit: Risk_Technology_Framework
+priority: 1
+
+/*=============================================================================*/
+
+/* Pattern Analysis Processing Job */
+insert_job: scm_xtf_54782_etl_proc_pattern_flow_rt_patternanalysis_prc_cmd
+job_type: CMD
+owner: xtf_ml_team@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "00:30,02:30,04:30,06:30,08:30,10:30,12:30,14:30,16:30,18:30,20:30,22:30"
+description: "Machine learning pattern analysis for fraud detection"
+command: /opt/spark/bin/spark-submit \
+  --input-stream s3://xtf-transaction-enriched/stream/ \
+  --output-path s3://xtf-pattern-analysis/predictions/ \
+condition: s(scm_xtf_89345_etl_proc_velocity_flow_rt_velocitycheck_prc_cmd)
+alarm_if_fail: 1
+send_notification: a
+notification_emailaddress: xtf-ml-alerts@scm.com,xtf-analytics@scm.com
+std_out_file: /var/log/xtf/pattern_analysis_$AUTO_JOB_NAME.out
+std_err_file: /var/log/xtf/pattern_analysis_$AUTO_JOB_NAME.err
+pipeline_name: XTF_ML_Pattern_Pipeline
+business_unit: Risk_Technology_Framework
+priority: 1
+
+/*=============================================================================*/
+
+/* Risk Scoring Processing Job */
+insert_job: scm_xtf_73126_etl_proc_scoring_flow_rt_riskscoring_prc_cmd
+job_type: CMD
+owner: xtf_analytics@scm.com
+permission: gx,ge,wx,we,mx,me
+date_conditions: 1
+days_of_week: all
+start_times: "00:45,02:45,04:45,06:45,08:45,10:45,12:45,14:45,16:45,18:45,20:45,22:45"
+description: "Real-time risk scoring engine for transaction assessment"
+command: /opt/spark/bin/spark-submit \
+  --input-data s3://xtf-pattern-analysis/predictions/ \
+  --output-scores s3://xtf-risk-scores/real-time/ \
+machine: xtf-spark-cluster-03
+condition: s(scm_xtf_54782_etl_proc_pattern_flow_rt_patternanalysis_prc_cmd)
+alarm_if_fail: 1
+send_notification: a

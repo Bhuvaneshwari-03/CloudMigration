@@ -1,0 +1,86 @@
+job_config:
+  job_name: scm_fc_52896_etl_proc_aml_flow_dly_amlmonitoring_prc_cmd
+  job_id: 52896
+  domain: scm
+  process_type: aml_flow
+  frequency: daily
+  description: "Daily ETL process for AML monitoring and compliance"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-scm-db01.internal
+    database: scm_source_db
+    schema: aml_data
+  tables:
+    - table_name: transaction_records
+      columns:
+        - transaction_id
+        - customer_id
+        - amount
+        - currency
+        - transaction_type
+        - timestamp
+        - counterparty_id
+        - geographic_origin
+        - risk_indicators
+    - table_name: customer_profiles
+      columns:
+        - customer_id
+        - risk_rating
+        - business_type
+        - jurisdiction
+        - pep_status
+        - sanction_status
+        - last_kyc_update
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: scm_analytics_db
+    schema: aml_monitoring
+  tables:
+    - table_name: daily_aml_alerts
+      columns:
+        - process_date
+        - customer_id
+        - alert_type
+        - alert_severity
+        - transaction_pattern
+        - risk_score
+        - investigation_status
+        - regulatory_reportable
+        - alert_date
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 25000
+  parallel_threads: 8
+  data_quality_checks:
+    - null_check: customer_id, transaction_id
+    - range_check: amount [0,999999999]
+    - currency_code_check: currency
+  transformations:
+    - apply_aml_rules
+    - calculate_transaction_patterns
+    - generate_risk_scores
+    - flag_suspicious_activities
+    
+schedule_config:
+  start_time: "01:00"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - daily_transaction_ingestion
+  
+monitoring_config:
+  sla_hours: 3
+  alert_recipients:
+    - aml-team@scm.com.
+    - compliance@scm.com.
+  metrics:
+    - alerts_generated
+    - high_risk_customers
+    - regulatory_reports_pending
+    - processing_time

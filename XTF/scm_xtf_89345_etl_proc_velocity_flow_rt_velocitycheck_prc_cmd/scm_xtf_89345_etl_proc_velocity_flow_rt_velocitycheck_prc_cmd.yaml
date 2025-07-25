@@ -1,0 +1,217 @@
+# XTF Real-Time Velocity Check Pipeline Configuration
+# Job: scm_xtf_89345_etl_proc_velocity_flow_rt_velocitycheck_prc_cmd
+# Pipeline: Real-Time Velocity Analysis System
+
+pipeline:
+  name: "XTF_Velocity_Analysis"
+  version: "1.1.8"
+  description: "Real-time velocity checking for transaction patterns"
+  owner: "xtf_analytics@scm.com"
+  business_unit: "Risk_Technology_Framework"
+
+source_tables:
+  - name: "fraud_alerts_stream"
+    type: "kafka_stream"
+    database: "xtf_streaming_db"
+    table: "fraud_detection_results"
+    location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
+    topic: "xtf-fraud-alerts"
+    format: "avro"
+    schema_registry: "http://schema-registry:8081"
+    checkpoint_location: "s3://xtf-checkpoints/velocity/"
+    watermark:
+      column: "alert_timestamp"
+      delay: "45 seconds"
+    columns:
+      - name: "alert_id"
+        type: "string"
+        nullable: false
+      - name: "transaction_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "alert_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "transaction_amount"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "merchant_id"
+        type: "string"
+        nullable: true
+      - name: "fraud_score"
+        type: "double"
+        nullable: false
+
+  - name: "velocity_patterns"
+    type: "delta_table"
+    database: "xtf_reference_db"
+    table: "customer_velocity_patterns"
+    location: "s3://xtf-reference-data/velocity-patterns/"
+    format: "delta"
+    columns:
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "avg_daily_transactions"
+        type: "integer"
+        nullable: false
+      - name: "avg_daily_amount"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "max_hourly_transactions"
+        type: "integer"
+        nullable: false
+      - name: "typical_merchant_count"
+        type: "integer"
+        nullable: false
+      - name: "velocity_score_baseline"
+        type: "double"
+        nullable: false
+      - name: "last_updated"
+        type: "timestamp"
+        nullable: false
+
+  - name: "velocity_rules"
+    type: "delta_table"
+    database: "xtf_config_db"
+    table: "velocity_check_rules"
+    location: "s3://xtf-config/velocity-rules/"
+    format: "delta"
+    columns:
+      - name: "rule_id"
+        type: "string"
+        nullable: false
+      - name: "rule_type"
+        type: "string"
+        nullable: false
+      - name: "time_window_minutes"
+        type: "integer"
+        nullable: false
+      - name: "transaction_count_threshold"
+        type: "integer"
+        nullable: false
+      - name: "amount_threshold"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "merchant_count_threshold"
+        type: "integer"
+        nullable: false
+      - name: "velocity_multiplier"
+        type: "double"
+        nullable: false
+      - name: "is_active"
+        type: "boolean"
+        nullable: false
+
+target_tables:
+  - name: "velocity_analysis_results"
+    type: "delta_table"
+    database: "xtf_velocity_db"
+    table: "real_time_velocity_analysis"
+    location: "s3://xtf-velocity-analysis/results/"
+    format: "delta"
+    write_mode: "append"
+    partition_by: 
+      - "analysis_date"
+      - "velocity_risk_level"
+    optimize_write: true
+    auto_compact: true
+    columns:
+      - name: "analysis_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "analysis_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "analysis_date"
+        type: "date"
+        nullable: false
+      - name: "time_window_minutes"
+        type: "integer"
+        nullable: false
+      - name: "transaction_count"
+        type: "integer"
+        nullable: false
+      - name: "total_amount"
+        type: "decimal(15,2)"
+        nullable: false
+      - name: "unique_merchants"
+        type: "integer"
+        nullable: false
+      - name: "velocity_score"
+        type: "double"
+        nullable: false
+      - name: "velocity_risk_level"
+        type: "string"
+        nullable: false
+      - name: "baseline_deviation"
+        type: "double"
+        nullable: false
+      - name: "triggered_rules"
+        type: "array<string>"
+        nullable: false
+
+  - name: "velocity_alerts"
+    type: "kafka_sink"
+    database: "xtf_streaming_db"
+    table: "velocity_alerts_stream"
+    location: "kafka://kafka-cluster-01:9092"
+    topic: "xtf-velocity-alerts"
+    format: "json"
+    columns:
+      - name: "alert_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "alert_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "velocity_score"
+        type: "double"
+        nullable: false
+      - name: "risk_level"
+        type: "string"
+        nullable: false
+      - name: "time_window"
+        type: "string"
+        nullable: false
+      - name: "transaction_count"
+        type: "integer"
+        nullable: false
+      - name: "amount_total"
+        type: "decimal(15,2)"
+        nullable: false
+
+processing:
+  stream_processing:
+    trigger: "3 minutes"
+    batch_size: 500
+    parallelism: 15
+    checkpoint_interval: "3 minutes"
+    
+  velocity_analysis:
+    time_windows: [5, 15, 30, 60, 120, 1440] # minutes
+    velocity_thresholds:
+      low: 0.3
+      medium: 0.6
+      high: 0.8
+      critical: 0.95
+    
+  windowing:
+    watermark_delay: "45 seconds"
+    late_data_threshold: "5 minutes"
+    
+  monitoring:
+    metrics_enabled: true
+    alert_thresholds:
+      processing_delay_seconds: 180
+      velocity_alert_rate: 0.02
+      error_rate_threshold: 0.01

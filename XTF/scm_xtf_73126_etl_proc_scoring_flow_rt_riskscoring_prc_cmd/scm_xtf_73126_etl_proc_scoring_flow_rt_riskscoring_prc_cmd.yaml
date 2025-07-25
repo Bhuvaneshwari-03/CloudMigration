@@ -1,0 +1,230 @@
+# XTF Real-Time Risk Scoring Pipeline Configuration
+# Job: scm_xtf_73126_etl_proc_scoring_flow_rt_riskscoring_prc_cmd
+# Pipeline: Real-Time Risk Scoring Engine
+
+pipeline:
+  name: "XTF_Risk_Scoring_Engine"
+  version: "1.5.2"
+  description: "Real-time risk scoring engine for transaction assessment"
+  owner: "xtf_analytics@scm.com"
+  business_unit: "Risk_Technology_Framework"
+
+source_tables:
+  - name: "pattern_predictions_stream"
+    type: "kafka_stream"
+    database: "xtf_streaming_db"
+    table: "ml_pattern_predictions"
+    location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
+    topic: "xtf-ml-insights"
+    format: "avro"
+    schema_registry: "http://schema-registry:8081"
+    checkpoint_location: "s3://xtf-checkpoints/risk-scoring/"
+    watermark:
+      column: "insight_timestamp"
+      delay: "30 seconds"
+    columns:
+      - name: "insight_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "insight_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "pattern_detected"
+        type: "string"
+        nullable: false
+      - name: "fraud_probability"
+        type: "double"
+        nullable: false
+      - name: "recommended_action"
+        type: "string"
+        nullable: false
+
+  - name: "customer_reference_data"
+    type: "delta_table"
+    database: "xtf_reference_db"
+    table: "customer_risk_profiles"
+    location: "s3://xtf-reference-data/customer-profiles/"
+    format: "delta"
+    columns:
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "customer_segment"
+        type: "string"
+        nullable: false
+      - name: "account_age_days"
+        type: "integer"
+        nullable: false
+      - name: "credit_score"
+        type: "integer"
+        nullable: true
+      - name: "income_bracket"
+        type: "string"
+        nullable: true
+      - name: "employment_status"
+        type: "string"
+        nullable: true
+      - name: "geographical_risk_score"
+        type: "double"
+        nullable: false
+      - name: "product_portfolio_risk"
+        type: "double"
+        nullable: false
+      - name: "relationship_tenure_score"
+        type: "double"
+        nullable: false
+
+  - name: "risk_scoring_models"
+    type: "delta_table"
+    database: "xtf_ml_db"
+    table: "risk_scoring_models"
+    location: "s3://xtf-ml-models/risk-scoring/production/"
+    format: "delta"
+    columns:
+      - name: "model_id"
+        type: "string"
+        nullable: false
+      - name: "model_name"
+        type: "string"
+        nullable: false
+      - name: "model_version"
+        type: "string"
+        nullable: false
+      - name: "model_path"
+        type: "string"
+        nullable: false
+      - name: "model_type"
+        type: "string"
+        nullable: false
+      - name: "scoring_weights"
+        type: "map<string,double>"
+        nullable: false
+      - name: "is_active"
+        type: "boolean"
+        nullable: false
+      - name: "created_timestamp"
+        type: "timestamp"
+        nullable: false
+
+  - name: "risk_thresholds_config"
+    type: "delta_table"
+    database: "xtf_config_db"
+    table: "risk_scoring_thresholds"
+    location: "s3://xtf-config/risk-thresholds/"
+    format: "delta"
+    columns:
+      - name: "threshold_id"
+        type: "string"
+        nullable: false
+      - name: "customer_segment"
+        type: "string"
+        nullable: false
+      - name: "low_risk_threshold"
+        type: "double"
+        nullable: false
+      - name: "medium_risk_threshold"
+        type: "double"
+        nullable: false
+      - name: "high_risk_threshold"
+        type: "double"
+        nullable: false
+      - name: "critical_risk_threshold"
+        type: "double"
+        nullable: false
+      - name: "action_required_threshold"
+        type: "double"
+        nullable: false
+
+target_tables:
+  - name: "real_time_risk_scores"
+    type: "delta_table"
+    database: "xtf_scoring_db"
+    table: "customer_risk_scores_realtime"
+    location: "s3://xtf-risk-scores/real-time/"
+    format: "delta"
+    write_mode: "append"
+    partition_by: 
+      - "scoring_date"
+      - "risk_category"
+    optimize_write: true
+    auto_compact: true
+    columns:
+      - name: "risk_score_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "scoring_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "scoring_date"
+        type: "date"
+        nullable: false
+      - name: "final_risk_score"
+        type: "double"
+        nullable: false
+      - name: "risk_category"
+        type: "string"
+        nullable: false
+      - name: "model_version"
+        type: "string"
+        nullable: false
+      - name: "component_scores"
+        type: "map<string,double>"
+        nullable: false
+      - name: "risk_factors"
+        type: "array<string>"
+        nullable: false
+      - name: "recommended_actions"
+        type: "array<string>"
+        nullable: false
+
+  - name: "risk_alerts_stream"
+    type: "kafka_sink"
+    database: "xtf_streaming_db"
+    table: "risk_alerts_realtime"
+    location: "kafka://kafka-cluster-01:9092"
+    topic: "xtf-risk-alerts"
+    format: "json"
+    columns:
+      - name: "alert_id"
+        type: "string"
+        nullable: false
+      - name: "customer_id"
+        type: "string"
+        nullable: false
+      - name: "alert_timestamp"
+        type: "timestamp"
+        nullable: false
+      - name: "risk_score"
+        type: "double"
+        nullable: false
+      - name: "risk_category"
+        type: "string"
+        nullable: false
+      - name: "recommended_action"
+        type: "string"
+        nullable: false
+
+processing:
+  stream_processing:
+    trigger: "5 minutes"
+    batch_size: 300
+    parallelism: 12
+    checkpoint_interval: "5 minutes"
+    
+  risk_scoring:
+    scoring_models: ["ensemble", "gradient_boosting", "logistic_regression"]
+    ensemble_weights: [0.5, 0.3, 0.2]
+    risk_categories: ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    
+  monitoring:
+    metrics_enabled: true
+    alert_thresholds:
+      processing_delay_seconds: 300
+      high_risk_rate_threshold: 0.03
+      error_rate_threshold: 0.01

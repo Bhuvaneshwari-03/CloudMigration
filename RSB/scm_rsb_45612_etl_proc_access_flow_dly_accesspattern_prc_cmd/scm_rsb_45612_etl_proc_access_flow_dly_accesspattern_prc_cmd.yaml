@@ -1,0 +1,79 @@
+job_config:
+  job_name: scm_rsb_45612_etl_proc_access_flow_dly_accesspattern_prc_cmd
+  job_id: 45612
+  domain: RSB
+  process_type: access_flow
+  frequency: daily
+  description: "Daily ETL process for access pattern analysis"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-rsb-db02.internal
+    database: rsb_source_db
+    schema: access_control
+  tables:
+    - table_name: user_access_logs
+      columns:
+        - log_id
+        - user_id
+        - resource_id
+        - access_type
+        - timestamp
+        - session_duration
+        - access_granted
+        - privilege_level
+    - table_name: system_permissions
+      columns:
+        - permission_id
+        - user_id
+        - resource_type
+        - permission_level
+        - granted_date
+        - expiry_date
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: rsb_analytics_db
+    schema: access_analytics
+  tables:
+    - table_name: daily_access_patterns
+      columns:
+        - process_date
+        - user_id
+        - resource_category
+        - access_frequency
+        - avg_session_duration
+        - unsl_access_flag
+        - privilege_escalation_flag
+        - off_hours_access_count
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 15000
+  parallel_threads: 6
+  data_quality_checks:
+    - null_check: user_id, resource_id
+    - date_range_check: timestamp
+  transformations:
+    - categorize_resources
+    - detect_unsl_patterns
+    - calculate_access_metrics
+    
+schedule_config:
+  start_time: "02:30"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - scm_rsb_38729_etl_proc_thentication_flow_dly_thanalytics_prc_cmd
+  
+monitoring_config:
+  sla_hours: 2
+  alert_recipients:
+    - rsb-team@scm.com.
+  metrics:
+    - record_count
+    - pattern_anomalies_detected
+    - processing_time

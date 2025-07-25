@@ -1,0 +1,262 @@
+job_config:
+  job_name: scm_fc_35681_etl_proc_suspicious_flow_dly_sargeneration_prc_cmd
+  job_id: 35681
+  domain: fc
+  process_type: suspicious_flow
+  frequency: daily
+  description: "Daily ETL process for Suspicious Activity Report (SAR) generation"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-fc-db04.internal
+    database: fc_source_db
+    schema: suspicious_activities
+  tables:
+    - table_name: flagged_transactions
+      columns:
+        - flag_id
+        - customer_id
+        - transaction_id
+        - suspicious_indicator
+        - flag_date
+        - investigation_status
+        - analyst_notes
+        - escalation_level
+    - table_name: case_management
+      columns:
+        - case_id
+        - customer_id
+        - case_type
+        - case_status
+        - assigned_analyst
+        - priority_level
+        - created_date
+        - last_activity_date
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: fc_analytics_db
+    schema: sar_processing
+  tables:
+    - table_name: daily_sar_candidates
+      columns:
+        - process_date
+        - customer_id
+        - case_id
+        - suspicious_activity_type
+        - sar_threshold_met
+        - regulatory_deadline
+        - sar_status
+        - filing_priority
+        - required_documentation
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 10000
+  parallel_threads: 4
+  data_quality_checks:
+    - null_check: customer_id, case_id
+    - enum_check: case_status [OPEN, UNDER_REVIEW, CLOSED, ESCALATED]
+    - date_check: regulatory_deadline
+  transformations:
+    - evaluate_sar_thresholds
+    - calculate_filing_priorities
+    - prepare_regulatory_packages
+    - generate_compliance_reports
+    
+schedule_config:
+  start_time: "04:00"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - scm_fc_52896_etl_proc_aml_flow_dly_amlmonitoring_prc_cmd
+    - scm_fc_78429_etl_proc_kyc_flow_dly_kycverification_prc_cmd
+  
+monitoring_config:
+  sla_hours: 1
+  alert_recipients:
+    - sar-team@scm.com.
+    - compliance@scm.com.
+    - legal@scm.com.
+  metrics:
+    - sars_requiring_filing
+    - approaching_deadlines
+    - regulatory_breaches
+    - processing_timejob_config:
+  job_name: scm_fc_35681_etl_proc_suspicious_flow_dly_sargeneration_prc_cmd
+  job_id: 35681
+  domain: fc
+  process_type: suspicious_flow
+  frequency: daily
+  description: "Daily ETL process for Suspicious Activity Report (SAR) generation"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-fc-db04.internal
+    database: fc_source_db
+    schema: suspicious_activities
+  tables:
+    - table_name: flagged_transactions
+      columns:
+        - flag_id
+        - customer_id
+        - transaction_id
+        - suspicious_indicator
+        - flag_date
+        - investigation_status
+        - analyst_notes
+        - escalation_level
+    - table_name: case_management
+      columns:
+        - case_id
+        - customer_id
+        - case_type
+        - case_status
+        - assigned_analyst
+        - priority_level
+        - created_date
+        - last_activity_date
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: fc_analytics_db
+    schema: sar_processing
+  tables:
+    - table_name: daily_sar_candidates
+      columns:
+        - process_date
+        - customer_id
+        - case_id
+        - suspicious_activity_type
+        - sar_threshold_met
+        - regulatory_deadline
+        - sar_status
+        - filing_priority
+        - required_documentation
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 10000
+  parallel_threads: 4
+  data_quality_checks:
+    - null_check: customer_id, case_id
+    - enum_check: case_status [OPEN, UNDER_REVIEW, CLOSED, ESCALATED]
+    - date_check: regulatory_deadline
+  transformations:
+    - evaluate_sar_thresholds
+    - calculate_filing_priorities
+    - prepare_regulatory_packages
+    - generate_compliance_reports
+    
+schedule_config:
+  start_time: "04:00"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - scm_fc_52896_etl_proc_aml_flow_dly_amlmonitoring_prc_cmd
+    - scm_fc_78429_etl_proc_kyc_flow_dly_kycverification_prc_cmd
+  
+monitoring_config:
+  sla_hours: 1
+  alert_recipients:
+    - sar-team@scm.com.
+    - compliance@scm.com.
+    - legal@scm.com.
+  metrics:
+    - sars_requiring_filing
+    - approaching_deadlines
+    - regulatory_breaches
+    - processing_timejob_config:
+  job_name: scm_fc_35681_etl_proc_suspicious_flow_dly_sargeneration_prc_cmd
+  job_id: 35681
+  domain: fc
+  process_type: suspicious_flow
+  frequency: daily
+  description: "Daily ETL process for Suspicious Activity Report (SAR) generation"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-fc-db04.internal
+    database: fc_source_db
+    schema: suspicious_activities
+  tables:
+    - table_name: flagged_transactions
+      columns:
+        - flag_id
+        - customer_id
+        - transaction_id
+        - suspicious_indicator
+        - flag_date
+        - investigation_status
+        - analyst_notes
+        - escalation_level
+    - table_name: case_management
+      columns:
+        - case_id
+        - customer_id
+        - case_type
+        - case_status
+        - assigned_analyst
+        - priority_level
+        - created_date
+        - last_activity_date
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: fc_analytics_db
+    schema: sar_processing
+  tables:
+    - table_name: daily_sar_candidates
+      columns:
+        - process_date
+        - customer_id
+        - case_id
+        - suspicious_activity_type
+        - sar_threshold_met
+        - regulatory_deadline
+        - sar_status
+        - filing_priority
+        - required_documentation
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 10000
+  parallel_threads: 4
+  data_quality_checks:
+    - null_check: customer_id, case_id
+    - enum_check: case_status [OPEN, UNDER_REVIEW, CLOSED, ESCALATED]
+    - date_check: regulatory_deadline
+  transformations:
+    - evaluate_sar_thresholds
+    - calculate_filing_priorities
+    - prepare_regulatory_packages
+    - generate_compliance_reports
+    
+schedule_config:
+  start_time: "04:00"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - scm_fc_52896_etl_proc_aml_flow_dly_amlmonitoring_prc_cmd
+    - scm_fc_78429_etl_proc_kyc_flow_dly_kycverification_prc_cmd
+  
+monitoring_config:
+  sla_hours: 1
+  alert_recipients:
+    - sar-team@scm.com.
+    - compliance@scm.com.
+    - legal@scm.com.
+  metrics:
+    - sars_requiring_filing
+    - approaching_deadlines
+    - regulatory_breaches
+    - processing_time

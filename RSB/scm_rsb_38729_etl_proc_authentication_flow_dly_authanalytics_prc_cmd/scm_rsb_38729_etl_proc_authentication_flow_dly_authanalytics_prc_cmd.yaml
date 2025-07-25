@@ -1,0 +1,77 @@
+job_config:
+  job_name: scm_rsb_38729_etl_proc_thentication_flow_dly_thanalytics_prc_cmd
+  job_id: 38729
+  domain: RSB
+  process_type: thentication_flow
+  frequency: daily
+  description: "Daily ETL process for thentication flow analytics"
+  
+source_config:
+  source_type: database
+  connection:
+    host: scm-rsb-db01.internal
+    database: rsb_source_db
+    schema: thentication
+  tables:
+      columns:
+        - user_id
+        - session_id
+        - th_method
+        - timestamp
+        - ip_address
+        - device_fingerprint
+        - th_result
+        - risk_score
+      columns:
+        - attempt_id
+        - user_id
+        - timestamp
+        - success_flag
+        - failure_reason
+        - geo_location
+  
+target_config:
+  target_type: database
+  connection:
+    host: scm-dwh-cluster.internal
+    database: rsb_analytics_db
+    schema: th_analytics
+  tables:
+    - table_name: daily_th_analytics
+      columns:
+        - process_date
+        - user_id
+        - total_attempts
+        - successful_ths
+        - failed_ths
+        - avg_risk_score
+        - unique_devices
+        - geo_variance_flag
+        - last_updated
+      partition_key: process_date
+      
+processing_config:
+  batch_size: 10000
+  parallel_threads: 4
+  data_quality_checks:
+    - null_check: user_id
+    - range_check: risk_score [0,100]
+  transformations:
+    - aggregate_daily_metrics
+    - calculate_risk_indicators
+    - detect_anomalies
+    
+schedule_config:
+  start_time: "02:00"
+  timezone: "stralia/Sydney"
+  dependencies:
+    - raw_data_ingestion_complete
+  
+monitoring_config:
+  sla_hours: 2
+  alert_recipients:
+    - rsb-team@scm.com.
+  metrics:
+    - record_count
+    - processing_time
+    - data_quality_score
