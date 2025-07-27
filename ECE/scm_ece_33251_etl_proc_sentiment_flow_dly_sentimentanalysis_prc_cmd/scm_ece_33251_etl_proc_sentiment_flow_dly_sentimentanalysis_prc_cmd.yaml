@@ -12,26 +12,6 @@ source_config:
     host: -scm-ece-db04.internal
     database: ece_source_db
     schema: sentiment_data
-  tables:
-    - table_name: customer_communications
-      columns:
-        - communication_id
-        - customer_id
-        - channel
-        - message_content
-        - timestamp
-        - communication_type
-        - agent_response
-        - resolution_time
-    - table_name: social_media_mentions
-      columns:
-        - mention_id
-        - platform
-        - content
-        - thor_handle
-        - post_timestamp
-        - reach_metrics
-        - engagement_metrics
   
 target_config:
   target_type: database
