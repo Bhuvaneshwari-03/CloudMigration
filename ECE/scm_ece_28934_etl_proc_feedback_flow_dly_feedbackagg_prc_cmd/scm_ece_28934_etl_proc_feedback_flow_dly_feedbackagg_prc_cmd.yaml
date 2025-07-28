@@ -10,10 +10,10 @@ source_config:
   source_type: database
   connection:
     host: scm-scm-ece-db02.internal
-    database: ece_source_db
+    source_database: ece_source_db
     schema: customer_feedback
   tables:
-    - table_name: feedback_responses
+    - source_table: feedback_responses
       columns:
         - response_id
         - customer_id
@@ -37,10 +37,10 @@ target_config:
   target_type: database
   connection:
     host: scm-scm-dwh-cluster.internal
-    database: ece_analytics_db
+    target_database: ece_analytics_db
     schema: feedback_analytics
   tables:
-    - table_name: daily_feedback_summary
+    - target_table: daily_feedback_summary
       columns:
         - process_date
         - survey_type
