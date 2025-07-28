@@ -57,58 +57,6 @@ source_tables:
         type: "string"
         nullable: true
 
-  - name: "customer_profiles"
-    type: "delta_table"
-    database: "xtf_reference_db"
-    table: "customer_risk_profiles"
-    location: "s3://xtf-reference-data/customer-profiles/"
-    format: "delta"
-    columns:
-      - name: "customer_id"
-        type: "string"
-        nullable: false
-      - name: "risk_score"
-        type: "double"
-        nullable: false
-      - name: "customer_segment"
-        type: "string"
-        nullable: false
-      - name: "account_age_days"
-        type: "integer"
-        nullable: false
-      - name: "avg_monthly_volume"
-        type: "decimal(15,2)"
-        nullable: false
-      - name: "last_updated"
-        type: "timestamp"
-        nullable: false
-
-  - name: "fraud_rules"
-    type: "delta_table"
-    database: "xtf_config_db"
-    table: "fraud_detection_rules"
-    location: "s3://xtf-config/fraud-rules/"
-    format: "delta"
-    columns:
-      - name: "rule_id"
-        type: "string"
-        nullable: false
-      - name: "rule_name"
-        type: "string"
-        nullable: false
-      - name: "rule_logic"
-        type: "string"
-        nullable: false
-      - name: "threshold_value"
-        type: "double"
-        nullable: false
-      - name: "severity_level"
-        type: "string"
-        nullable: false
-      - name: "is_active"
-        type: "boolean"
-        nullable: false
-
 target_tables:
   - name: "fraud_alerts_realtime"
     type: "delta_table"
