@@ -10,19 +10,19 @@ pipeline:
   business_unit: "Risk_Technology_Framework"
 
 source_tables:
-  - name: "transaction_stream_raw"
-    type: "kafka_stream"
-    database: "xtf_streaming_db"
-    table: "transaction_events"
-    location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
-    topic: "scm-transaction-stream"
-    format: "avro"
-    schema_registry: "http://schema-registry:8081"
-    checkpoint_location: "s3://xtf-checkpoints/fraud-detection/"
-    watermark:
-      column: "transaction_timestamp"
-      delay: "30 seconds"
-    columns:
+  - source_name: "transaction_stream_raw"
+    source_type: "kafka_stream"
+    source_database: "xtf_streaming_db"
+    source_table: "transaction_events"
+    source_location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
+    source_topic: "scm-transaction-stream"
+    source_format: "avro"
+    source_schema_registry: "http://schema-registry:8081"
+    source_checkpoint_location: "s3://xtf-checkpoints/fraud-detection/"
+    source_watermark:
+      source_column: "transaction_timestamp"
+      source_delay: "30 seconds"
+    source_columns:
       - name: "transaction_id"
         type: "string"
         nullable: false
@@ -58,19 +58,19 @@ source_tables:
         nullable: true
 
 target_tables:
-  - name: "fraud_alerts_realtime"
-    type: "delta_table"
-    database: "xtf_alerts_db"
-    table: "real_time_fraud_alerts"
-    location: "s3://xtf-fraud-alerts/processed/"
-    format: "delta"
-    write_mode: "append"
-    partition_by: 
+  - target_name: "fraud_alerts_realtime"
+    target_type: "delta_table"
+    target_database: "xtf_alerts_db"
+    target_table: "real_time_fraud_alerts"
+    target_location: "s3://xtf-fraud-alerts/processed/"
+    target_format: "delta"
+    target_write_mode: "append"
+    target_partition_by: 
       - "alert_date"
       - "severity_level"
-    optimize_write: true
-    auto_compact: true
-    columns:
+    target_optimize_write: true
+    target_auto_compact: true
+    target_columns:
       - name: "alert_id"
         type: "string"
         nullable: false
@@ -103,30 +103,6 @@ target_tables:
         nullable: true
       - name: "alert_status"
         type: "string"
-        nullable: false
-
-  - name: "fraud_metrics_stream"
-    type: "kafka_sink"
-    database: "xtf_streaming_db"
-    table: "fraud_detection_metrics"
-    location: "kafka://kafka-cluster-01:9092"
-    topic: "xtf-fraud-metrics"
-    format: "json"
-    columns:
-      - name: "metric_timestamp"
-        type: "timestamp"
-        nullable: false
-      - name: "transactions_processed"
-        type: "long"
-        nullable: false
-      - name: "fraud_alerts_generated"
-        type: "long"
-        nullable: false
-      - name: "avg_fraud_score"
-        type: "double"
-        nullable: false
-      - name: "processing_latency_ms"
-        type: "long"
         nullable: false
 
 processing:
