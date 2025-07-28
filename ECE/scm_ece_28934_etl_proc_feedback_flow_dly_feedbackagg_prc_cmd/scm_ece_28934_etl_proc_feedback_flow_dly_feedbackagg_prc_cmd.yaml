@@ -7,13 +7,13 @@ job_config:
   description: "Daily ETL process for customer feedback aggregation and analysis"
   
 source_config:
-  source_type: database
+  source_type: "database"
   connection:
-    host: scm-scm-ece-db02.internal
-    source_database: ece_source_db
-    schema: customer_feedback
+    host: "scm-scm-ece-db02.internal"
+    source_database: "ece_source_db"
+    schema: "customer_feedback"
   tables:
-    - source_table: feedback_responses
+    source_table: "feedback_responses"
       columns:
         - response_id
         - customer_id
@@ -23,24 +23,15 @@ source_config:
         - response_text
         - submission_date
         - channel_source
-    - table_name: survey_metadata
-      columns:
-        - survey_id
-        - survey_name
-        - survey_type
-        - active_period_start
-        - active_period_end
-        - target_scmdience
-        - response_target
   
 target_config:
-  target_type: database
+  target_type: "database"
   connection:
-    host: scm-scm-dwh-cluster.internal
-    target_database: ece_analytics_db
-    schema: feedback_analytics
+    host: "scm-scm-dwh-cluster.internal"
+    target_database: "ece_analytics_db"
+    schema: "feedback_analytics"
   tables:
-    - target_table: daily_feedback_summary
+    - target_table: "daily_feedback_summary"
       columns:
         - process_date
         - survey_type
