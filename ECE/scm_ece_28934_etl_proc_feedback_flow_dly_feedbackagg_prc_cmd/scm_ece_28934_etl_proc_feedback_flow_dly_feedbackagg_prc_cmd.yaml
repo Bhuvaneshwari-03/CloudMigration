@@ -10,10 +10,8 @@ source_config:
   source_type: "database"
   connection:
     host: "scm-scm-ece-db02.internal"
-    source_database: "ece_source_db"
     schema: "customer_feedback"
   tables:
-    source_table: "feedback_responses"
       columns:
         - response_id
         - customer_id
@@ -32,6 +30,7 @@ target_config:
     schema: "feedback_analytics"
   tables:
     - target_table: "daily_feedback_summary"
+      target_location: s3://ece_analytics_db/daily_feedback_summary/
       columns:
         - process_date
         - survey_type
