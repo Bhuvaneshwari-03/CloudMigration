@@ -8,88 +8,15 @@ pipeline:
   description: "Machine learning pattern analysis for fraud detection"
   owner: "xtf_ml_team@scm.com"
   business_unit: "Risk_Technology_Framework"
-
-source_tables:
-  - name: "velocity_analysis_stream"
-    type: "kafka_stream"
-    database: "xtf_streaming_db"
-    table: "velocity_analysis_results"
-    location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
-    topic: "xtf-velocity-analysis"
-    format: "avro"
-    schema_registry: "http://schema-registry:8081"
-    checkpoint_location: "s3://xtf-checkpoints/pattern-analysis/"
-    watermark:
-      column: "analysis_timestamp"
-      delay: "60 seconds"
-    columns:
-      - name: "analysis_id"
-        type: "string"
-        nullable: false
-      - name: "customer_id"
-        type: "string"
-        nullable: false
-      - name: "analysis_timestamp"
-        type: "timestamp"
-        nullable: false
-      - name: "velocity_score"
-        type: "double"
-        nullable: false
-      - name: "transaction_count"
-        type: "integer"
-        nullable: false
-      - name: "total_amount"
-        type: "decimal(15,2)"
-        nullable: false
-      - name: "unique_merchants"
-        type: "integer"
-        nullable: false
-      - name: "risk_level"
-        type: "string"
-        nullable: false
-
-  - name: "transaction_enriched"
-    type: "delta_table"
-    database: "xtf_enriched_db"
-    table: "enriched_transactions"
-    location: "s3://xtf-transaction-enriched/stream/"
-    format: "delta"
-    columns:
-      - name: "transaction_id"
-        type: "string"
-        nullable: false
-      - name: "customer_id"
-        type: "string"
-        nullable: false
-      - name: "transaction_timestamp"
-        type: "timestamp"
-        nullable: false
-      - name: "amount"
-        type: "decimal(15,2)"
-        nullable: false
-      - name: "merchant_category"
-        type: "string"
-        nullable: false
-      - name: "location_risk_score"
-        type: "double"
-        nullable: false
-      - name: "time_of_day_risk"
-        type: "double"
-        nullable: false
-      - name: "merchant_risk_score"
-        type: "double"
-        nullable: false
-      - name: "customer_behavior_score"
-        type: "double"
-        nullable: false
-
-  - name: "feature_store"
-    type: "delta_table"
-    database: "xtf_ml_db"
-    table: "feature_store_current"
-    location: "s3://xtf-feature-store/current/"
-    format: "delta"
-    columns:
+  
+source_config:
+  - source_name: "feature_store"
+    source_type: "delta_table"
+    source_database: "xtf_ml_db"
+    source_table: "feature_store_current"
+    source_location: "s3://xtf-feature-store/current/"
+    source_format: "delta"
+    source_columns:
       - name: "customer_id"
         type: "string"
         nullable: false
@@ -118,20 +45,20 @@ source_tables:
         type: "integer"
         nullable: false
 
-target_tables:
-  - name: "pattern_predictions"
-    type: "delta_table"
-    database: "xtf_ml_db"
-    table: "pattern_analysis_predictions"
-    location: "s3://xtf-pattern-analysis/predictions/"
-    format: "delta"
-    write_mode: "append"
-    partition_by: 
+target_config:
+  - target_name: "pattern_predictions"
+    target_type: "delta_table"
+    target_database: "xtf_ml_db"
+    target_table: "pattern_analysis_predictions"
+    target_location: "s3://xtf-pattern-analysis/predictions/"
+    target_format: "delta"
+    target_write_mode: "append"
+    target_partition_by: 
       - "prediction_date"
       - "model_version"
-    optimize_write: true
-    auto_compact: true
-    columns:
+    target_optimize_write: true
+    target_auto_compact: true
+    target_columns:
       - name: "prediction_id"
         type: "string"
         nullable: false
@@ -167,33 +94,6 @@ target_tables:
         nullable: false
       - name: "risk_factors"
         type: "array<string>"
-        nullable: false
-
-  - name: "ml_insights_stream"
-    type: "kafka_sink"
-    database: "xtf_streaming_db"
-    table: "ml_insights_realtime"
-    location: "kafka://kafka-cluster-01:9092"
-    topic: "xtf-ml-insights"
-    format: "json"
-    columns:
-      - name: "insight_id"
-        type: "string"
-        nullable: false
-      - name: "customer_id"
-        type: "string"
-        nullable: false
-      - name: "insight_timestamp"
-        type: "timestamp"
-        nullable: false
-      - name: "pattern_detected"
-        type: "string"
-        nullable: false
-      - name: "fraud_probability"
-        type: "double"
-        nullable: false
-      - name: "recommended_action"
-        type: "string"
         nullable: false
 
 processing:
