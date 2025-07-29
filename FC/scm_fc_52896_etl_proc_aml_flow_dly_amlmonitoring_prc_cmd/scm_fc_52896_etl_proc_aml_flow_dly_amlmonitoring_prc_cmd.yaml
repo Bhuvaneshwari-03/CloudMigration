@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm-scm-db01.internal
-    database: scm_source_db
+    source_database: scm_source_db
     schema: aml_data
   tables:
-    - table_name: transaction_records
+    - source_table: transaction_records
+      source_location: s3://scm_source_db/transaction_records/
       columns:
         - transaction_id
         - customer_id
@@ -24,24 +25,16 @@ source_config:
         - counterparty_id
         - geographic_origin
         - risk_indicators
-    - table_name: customer_profiles
-      columns:
-        - customer_id
-        - risk_rating
-        - business_type
-        - jurisdiction
-        - pep_status
-        - sanction_status
-        - last_kyc_update
   
 target_config:
   target_type: database
   connection:
     host: scm-dwh-cluster.internal
-    database: scm_analytics_db
-    schema: aml_monitoring
+    target_database: scm_analytics_db
+    target_schema: aml_monitoring
   tables:
-    - table_name: daily_aml_alerts
+    - target_table: daily_aml_alerts
+      target_location: s3://scm_analytics_db/daily_aml_alerts/
       columns:
         - process_date
         - customer_id
