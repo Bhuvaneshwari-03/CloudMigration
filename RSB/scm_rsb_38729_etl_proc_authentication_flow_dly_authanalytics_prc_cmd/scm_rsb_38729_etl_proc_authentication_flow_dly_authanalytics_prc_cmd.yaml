@@ -10,9 +10,10 @@ source_config:
   source_type: database
   connection:
     host: scm-rsb-db01.internal
-    database: rsb_source_db
+    source_database: rsb_source_db
     schema: thentication
-  tables:
+    source_table: authentication_method
+    source_location: s3://rsb_source_db/authentication_method/
       columns:
         - user_id
         - session_id
@@ -22,22 +23,15 @@ source_config:
         - device_fingerprint
         - th_result
         - risk_score
-      columns:
-        - attempt_id
-        - user_id
-        - timestamp
-        - success_flag
-        - failure_reason
-        - geo_location
   
 target_config:
   target_type: database
-  connection:
     host: scm-dwh-cluster.internal
-    database: rsb_analytics_db
+    target_database: rsb_analytics_db
     schema: th_analytics
   tables:
-    - table_name: daily_th_analytics
+    - target_table: daily_th_analytics
+      target_location: s3://rsb_analytics_db/daily_th_analytics/
       columns:
         - process_date
         - user_id
