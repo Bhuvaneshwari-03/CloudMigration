@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm-fc-db04.internal
-    database: fc_source_db
+    source_database: fc_source_db
     schema: suspicious_activities
   tables:
-    - table_name: flagged_transactions
+    - source_table: flagged_transactions
+      source_location: s3://fc_source_db/flagged_transactions/
       columns:
         - flag_id
         - customer_id
@@ -23,25 +24,16 @@ source_config:
         - investigation_status
         - analyst_notes
         - escalation_level
-    - table_name: case_management
-      columns:
-        - case_id
-        - customer_id
-        - case_type
-        - case_status
-        - assigned_analyst
-        - priority_level
-        - created_date
-        - last_activity_date
   
 target_config:
   target_type: database
   connection:
     host: scm-dwh-cluster.internal
-    database: fc_analytics_db
+    target_database: fc_analytics_db
     schema: sar_processing
   tables:
-    - table_name: daily_sar_candidates
+    - target_table: daily_sar_candidates
+      target_location: s3://fc_analytics_db/daily_sar_candidates/
       columns:
         - process_date
         - customer_id
