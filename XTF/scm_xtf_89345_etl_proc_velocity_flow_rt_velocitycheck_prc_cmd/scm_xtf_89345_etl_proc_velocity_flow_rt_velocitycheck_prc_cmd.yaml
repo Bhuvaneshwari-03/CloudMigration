@@ -10,48 +10,13 @@ pipeline:
   business_unit: "Risk_Technology_Framework"
 
 source_tables:
-  - name: "fraud_alerts_stream"
-    type: "kafka_stream"
-    database: "xtf_streaming_db"
-    table: "fraud_detection_results"
-    location: "kafka://kafka-cluster-01:9092,kafka-cluster-02:9092"
-    topic: "xtf-fraud-alerts"
-    format: "avro"
-    schema_registry: "http://schema-registry:8081"
-    checkpoint_location: "s3://xtf-checkpoints/velocity/"
-    watermark:
-      column: "alert_timestamp"
-      delay: "45 seconds"
-    columns:
-      - name: "alert_id"
-        type: "string"
-        nullable: false
-      - name: "transaction_id"
-        type: "string"
-        nullable: false
-      - name: "customer_id"
-        type: "string"
-        nullable: false
-      - name: "alert_timestamp"
-        type: "timestamp"
-        nullable: false
-      - name: "transaction_amount"
-        type: "decimal(15,2)"
-        nullable: false
-      - name: "merchant_id"
-        type: "string"
-        nullable: true
-      - name: "fraud_score"
-        type: "double"
-        nullable: false
-
-  - name: "velocity_patterns"
-    type: "delta_table"
-    database: "xtf_reference_db"
-    table: "customer_velocity_patterns"
-    location: "s3://xtf-reference-data/velocity-patterns/"
-    format: "delta"
-    columns:
+  - source_name: "velocity_patterns"
+    source_type: "delta_table"
+    source_database: "xtf_reference_db"
+    source_table: "customer_velocity_patterns"
+    source_location: "s3://xtf-reference-data/velocity-patterns/"
+    source_format: "delta"
+    source_columns:
       - name: "customer_id"
         type: "string"
         nullable: false
@@ -74,52 +39,20 @@ source_tables:
         type: "timestamp"
         nullable: false
 
-  - name: "velocity_rules"
-    type: "delta_table"
-    database: "xtf_config_db"
-    table: "velocity_check_rules"
-    location: "s3://xtf-config/velocity-rules/"
-    format: "delta"
-    columns:
-      - name: "rule_id"
-        type: "string"
-        nullable: false
-      - name: "rule_type"
-        type: "string"
-        nullable: false
-      - name: "time_window_minutes"
-        type: "integer"
-        nullable: false
-      - name: "transaction_count_threshold"
-        type: "integer"
-        nullable: false
-      - name: "amount_threshold"
-        type: "decimal(15,2)"
-        nullable: false
-      - name: "merchant_count_threshold"
-        type: "integer"
-        nullable: false
-      - name: "velocity_multiplier"
-        type: "double"
-        nullable: false
-      - name: "is_active"
-        type: "boolean"
-        nullable: false
-
 target_tables:
-  - name: "velocity_analysis_results"
-    type: "delta_table"
-    database: "xtf_velocity_db"
-    table: "real_time_velocity_analysis"
-    location: "s3://xtf-velocity-analysis/results/"
-    format: "delta"
-    write_mode: "append"
-    partition_by: 
+  - target_name: "velocity_analysis_results"
+    target_type: "delta_table"
+    target_database: "xtf_velocity_db"
+    target_table: "real_time_velocity_analysis"
+    target_location: "s3://xtf-velocity-analysis/results/"
+    target_format: "delta"
+    target_write_mode: "append"
+    target_partition_by: 
       - "analysis_date"
       - "velocity_risk_level"
-    optimize_write: true
-    auto_compact: true
-    columns:
+    target_optimize_write: true
+    target_auto_compact: true
+    target_columns:
       - name: "analysis_id"
         type: "string"
         nullable: false
@@ -156,40 +89,7 @@ target_tables:
       - name: "triggered_rules"
         type: "array<string>"
         nullable: false
-
-  - name: "velocity_alerts"
-    type: "kafka_sink"
-    database: "xtf_streaming_db"
-    table: "velocity_alerts_stream"
-    location: "kafka://kafka-cluster-01:9092"
-    topic: "xtf-velocity-alerts"
-    format: "json"
-    columns:
-      - name: "alert_id"
-        type: "string"
-        nullable: false
-      - name: "customer_id"
-        type: "string"
-        nullable: false
-      - name: "alert_timestamp"
-        type: "timestamp"
-        nullable: false
-      - name: "velocity_score"
-        type: "double"
-        nullable: false
-      - name: "risk_level"
-        type: "string"
-        nullable: false
-      - name: "time_window"
-        type: "string"
-        nullable: false
-      - name: "transaction_count"
-        type: "integer"
-        nullable: false
-      - name: "amount_total"
-        type: "decimal(15,2)"
-        nullable: false
-
+        
 processing:
   stream_processing:
     trigger: "3 minutes"
