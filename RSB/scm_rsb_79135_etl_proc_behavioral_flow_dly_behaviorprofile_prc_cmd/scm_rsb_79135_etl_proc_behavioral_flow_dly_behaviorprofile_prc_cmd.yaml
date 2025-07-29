@@ -32,8 +32,6 @@ target_config:
     target_database: rsb_analytics_db
     schema: behavioral_analytics
   tables:
-    - target_table: daily_behavior_profiles
-      target_location: s3://rsb_analytics_db/daily_behavior_profiles/ 
       columns:
         - process_date
         - user_id
