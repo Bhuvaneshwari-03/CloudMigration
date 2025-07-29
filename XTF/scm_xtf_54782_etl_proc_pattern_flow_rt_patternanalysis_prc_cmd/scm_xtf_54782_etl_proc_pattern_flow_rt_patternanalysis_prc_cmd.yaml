@@ -13,8 +13,6 @@ source_config:
   - source_name: "feature_store"
     source_type: "delta_table"
     source_database: "xtf_ml_db"
-    source_table: "feature_store_current"
-    source_location: "s3://xtf-feature-store/current/"
     source_format: "delta"
     source_columns:
       - name: "customer_id"
