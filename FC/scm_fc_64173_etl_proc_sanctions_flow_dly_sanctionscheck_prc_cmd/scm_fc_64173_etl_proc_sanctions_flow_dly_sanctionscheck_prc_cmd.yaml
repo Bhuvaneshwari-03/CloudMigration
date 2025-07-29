@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm_fc-db02.internal
-    database: fc_source_db
+    source_database: fc_source_db
     schema: sanctions_data
   tables:
-    - table_name: sanctions_lists
+    - source_table: sanctions_lists
+      source_location: s3://fc_source_db/sanctions_lists/
       columns:
         - list_id
         - entity_name
@@ -24,24 +25,16 @@ source_config:
         - effective_date
         - list_source
         - confidence_score
-    - table_name: screening_results
-      columns:
-        - screening_id
-        - customer_id
-        - match_score
-        - match_type
-        - screening_date
-        - false_positive_flag
-        - review_status
-  
+        
 target_config:
   target_type: database
   connection:
     host: scm-dwh-cluster.internal
-    database: fc_analytics_db
+    target_database: fc_analytics_db
     schema: sanctions_monitoring
   tables:
-    - table_name: daily_sanctions_screening
+    - target_table: daily_sanctions_screening
+      target_location: s3://fc_analytics_db/daily_sanctions_screening/
       columns:
         - process_date
         - customer_id
