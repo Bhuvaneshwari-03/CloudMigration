@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm-rsb-db02.internal
-    database: rsb_source_db
+    source_database: rsb_source_db
     schema: access_control
   tables:
-    - table_name: user_access_logs
+    - source_table: user_access_logs
+      source_location: s3://rsb_source_db/user_access_logs/
       columns:
         - log_id
         - user_id
@@ -23,23 +24,16 @@ source_config:
         - session_duration
         - access_granted
         - privilege_level
-    - table_name: system_permissions
-      columns:
-        - permission_id
-        - user_id
-        - resource_type
-        - permission_level
-        - granted_date
-        - expiry_date
   
 target_config:
   target_type: database
   connection:
     host: scm-dwh-cluster.internal
-    database: rsb_analytics_db
+    target_database: rsb_analytics_db
     schema: access_analytics
   tables:
-    - table_name: daily_access_patterns
+    - target_table: daily_access_patterns
+      target_location: s3://rsb_analytics_db/daily_access_patterns/
       columns:
         - process_date
         - user_id
