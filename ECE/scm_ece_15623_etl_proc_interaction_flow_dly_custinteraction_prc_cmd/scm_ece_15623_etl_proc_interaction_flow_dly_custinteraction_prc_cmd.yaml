@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm-ece-db01.internal
-    database: ece_source_db
+    source_database: ece_source_db
     schema: customer_interactions
   tables:
-    - table_name: interaction_events
+    - source_table: interaction_events
+      source_location: s3://ece_source_db/interaction_events/
       columns:
         - event_id
         - customer_id
@@ -37,10 +38,11 @@ target_config:
   target_type: database
   connection:
     host: scm-dwh-cluster.internal
-    database: ece_analytics_db
+    target_database: ece_analytics_db
     schema: interaction_analytics
   tables:
-    - table_name: daily_customer_interactions
+    - target_table: daily_customer_interactions
+      target_location: s3://ece_analytics_db/daily_customer_interactions/
       columns:
         - process_date
         - customer_id
