@@ -13,7 +13,6 @@ source_config:
     source_database: fc_source_db
     schema: sanctions_data
   tables:
-    - source_table: sanctions_lists
       source_location: s3://fc_source_db/sanctions_lists/
       columns:
         - list_id
@@ -33,7 +32,6 @@ target_config:
     target_database: fc_analytics_db
     schema: sanctions_monitoring
   tables:
-    - target_table: daily_sanctions_screening
       target_location: s3://fc_analytics_db/daily_sanctions_screening/
       columns:
         - process_date
