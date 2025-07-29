@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm-scm-ece-db03.internal
-    database: ece_source_db
+    source_database: ece_source_db
     schema: customer_journey
   tables:
-    - table_name: touchpoint_events
+    - source_table: touchpoint_events
+      source_location: s3://ece_source_db/touchpoint_events/
       columns:
         - event_id
         - customer_id
@@ -24,23 +25,16 @@ source_config:
         - sequence_number
         - outcome
         - effort_score
-    - table_name: journey_definitions
-      columns:
-        - journey_id
-        - journey_name
-        - journey_type
-        - typical_touchpoints
-        - expected_duration
-        - success_criteria
-  
 target_config:
   target_type: database
   connection:
     host: scm-scm-dwh-cluster.internal
-    database: ece_analytics_db
+    target_database: ece_analytics_db
     schema: journey_analytics
   tables:
-    - table_name: daily_journey_analysis
+    - target_table: daily_journey_analysis
+      target_location: s3://ece_analytics_db/daily_journey_analysis/
+      target_location: 
       columns:
         - process_date
         - customer_id
