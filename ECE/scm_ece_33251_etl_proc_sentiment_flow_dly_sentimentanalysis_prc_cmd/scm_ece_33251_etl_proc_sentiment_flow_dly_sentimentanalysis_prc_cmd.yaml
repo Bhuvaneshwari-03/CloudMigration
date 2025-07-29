@@ -10,17 +10,20 @@ source_config:
   source_type: database
   connection:
     host: -scm-ece-db04.internal
-    database: ece_source_db
+    source_database: ece_source_db
     schema: sentiment_data
+    source_table: sentiment_flow
+    source_location: s3://ece_source_db/sentiment_flow/
   
 target_config:
   target_type: database
   connection:
     host: -scm-dwh-cluster.internal
-    database: ece_analytics_db
+    target_database: ece_analytics_db
     schema: sentiment_analytics
   tables:
-    - table_name: daily_sentiment_analysis
+    - target_table: daily_sentiment_analysis
+      target_location: s3://ece_analytics_db/daily_sentiment_analysis/
       columns:
         - process_date
         - customer_id
