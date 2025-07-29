@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm-rsb-db04.internal
-    database: rsb_source_db
+    source_database: rsb_source_db
     schema: behavioral_data
   tables:
-    - table_name: user_activities
+    - source_table: user_activities
+      source_location: s3://rsb_source_db/user_activities/ 
       columns:
         - activity_id
         - user_id
@@ -23,23 +24,16 @@ source_config:
         - location
         - transaction_amount
         - application_used
-    - table_name: behavioral_baseline
-      columns:
-        - user_id
-        - baseline_date
-        - typical_hours
-        - typical_locations
-        - typical_transaction_range
-        - typical_devices
   
 target_config:
   target_type: database
   connection:
     host: scm-dwh-cluster.internal
-    database: rsb_analytics_db
+    target_database: rsb_analytics_db
     schema: behavioral_analytics
   tables:
-    - table_name: daily_behavior_profiles
+    - target_table: daily_behavior_profiles
+      target_location: s3://rsb_analytics_db/daily_behavior_profiles/ 
       columns:
         - process_date
         - user_id
