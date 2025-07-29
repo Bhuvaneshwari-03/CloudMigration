@@ -10,10 +10,11 @@ source_config:
   source_type: database
   connection:
     host: scm-rsb-db03.internal
-    database: rsb_source_db
+    source_database: rsb_source_db
     schema: threat_intel
   tables:
-    - table_name: security_incidents
+    - source_table: security_incidents
+      source_location: s3://rsb_source_db/security_incidents/
       columns:
         - incident_id
         - incident_type
@@ -23,24 +24,16 @@ source_config:
         - threat_vector
         - mitigation_status
         - impact_score
-    - table_name: threat_indicators
-      columns:
-        - indicator_id
-        - indicator_type
-        - indicator_value
-        - confidence_score
-        - source
-        - first_seen
-        - last_seen
-  
+    
 target_config:
   target_type: database
   connection:
     host: scm-dwh-cluster.internal
-    database: rsb_analytics_db
+    target_database: rsb_analytics_db
     schema: threat_analytics
   tables:
-    - table_name: daily_threat_intelligence
+    - target_table: daily_threat_intelligence
+      target_location: s3://rsb_analytics_db/daily_threat_intelligence/
       columns:
         - process_date
         - threat_category
